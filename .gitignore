@@ -1,0 +1,3 @@
+# Built binaries; committed only when cutting a release (see docs/plans/05-packaging.md).
+/libexec/*-*/
+/dist/

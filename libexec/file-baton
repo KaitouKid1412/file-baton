@@ -1,0 +1,23 @@
+#!/bin/sh
+# file-baton launcher: runs the binary built for this platform.
+# A missing binary never blocks Claude Code: hook calls exit 0.
+dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+os=$(uname -s | tr '[:upper:]' '[:lower:]')
+case $(uname -m) in
+  x86_64 | amd64) arch=amd64 ;;
+  arm64 | aarch64) arch=arm64 ;;
+  *) arch=$(uname -m) ;;
+esac
+exe="$dir/$os-$arch/file-baton"
+if [ -x "$exe" ]; then
+  exec "$exe" "$@"
+fi
+msg="file-baton: no binary for $os-$arch in $dir (build it with: make build)"
+if [ "$1" = hook ]; then
+  if [ "$2" = session-start ]; then
+    printf '{"systemMessage":"%s"}\n' "$msg"
+  fi
+  exit 0
+fi
+echo "$msg" >&2
+exit 1

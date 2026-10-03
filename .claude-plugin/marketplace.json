@@ -1,0 +1,14 @@
+{
+  "name": "file-baton",
+  "description": "file-baton: coordinate Claude Code sessions that share one git checkout.",
+  "owner": {
+    "name": "Surya Vamsee"
+  },
+  "plugins": [
+    {
+      "name": "file-baton",
+      "source": "./",
+      "description": "One Claude session edits a file at a time; the next gets it with a summary of what changed."
+    }
+  ]
+}
