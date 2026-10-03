@@ -325,7 +325,7 @@ func TestCommitGuard(t *testing.T) {
 	expect(t, b.edit("b.go"), "")
 	r.write("b.go", "package a\n\nfunc B() { println() }\n")
 
-	expect(t, b.bash(`git commit -am "B's change"`), "deny", "a.go  session aaaaaaaa", `"change A"`, "git restore --staged a.go")
+	expect(t, b.bash(`git commit -am "B's change"`), "deny", "a.go  session aaaaaaaa", `"change A"`, `git commit -m "..." -- <your files>`, "git restore --staged a.go")
 	expect(t, b.bash(`git add -A && git commit -m "B"`), "deny", "a.go")
 	expect(t, b.bash(`git commit -m "B" -- b.go`), "")
 	expect(t, b.bash(`git commit -m "B"`), "") // nothing of A's is staged
@@ -334,6 +334,23 @@ func TestCommitGuard(t *testing.T) {
 
 	r.git("commit", "-q", "-m", "A's change", "--", "a.go")
 	expect(t, b.bash(`git commit -am "B's change"`), "") // A's change is committed: pruned
+}
+
+// A session that commits its own change before its turn ends must not be
+// blamed later for someone else's edit of the same file.
+func TestCommittedChangeIsNotBlamedLater(t *testing.T) {
+	r := newRepo(t)
+	a := r.session("aaaaaaaa", os.Getpid())
+	b := r.session("bbbbbbbb", os.Getpid())
+	expect(t, a.edit("a.go"), "")
+	r.write("a.go", "package a\n\n// A.\nfunc A() {}\n")
+	r.git("commit", "-q", "-am", "A's change")
+	expect(t, a.stop(), "")
+
+	expect(t, b.edit("a.go"), "")
+	r.write("a.go", "package a\n\n// A does nothing.\nfunc A() {}\n")
+	expect(t, b.stop(), "")
+	expect(t, b.bash(`git commit -am "B's change"`), "")
 }
 
 func TestOwnCLIIsAutoApproved(t *testing.T) {

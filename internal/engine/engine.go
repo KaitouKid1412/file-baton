@@ -360,7 +360,8 @@ func (e *Engine) release(l *state.Lock, reason string) {
 		task = s.Task
 	}
 	diff, changed := e.Env.Diff(l)
-	if changed {
+	// A change the owner already committed is nobody's uncommitted work.
+	if changed && !e.Env.IsClean(l.Path) {
 		e.addTouch(l.Path, l.Owner, task)
 	}
 	e.Env.DropSnapshot(l.Snapshot)

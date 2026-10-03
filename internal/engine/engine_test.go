@@ -360,6 +360,20 @@ func TestForeignChangesAndPruning(t *testing.T) {
 	}
 }
 
+func TestChangeCommittedDuringTheTurnIsNotRecorded(t *testing.T) {
+	env := newFakeEnv()
+	env.files[fileA] = "v1"
+	e := newEngine(env)
+	e.Seen("A", 1, "")
+	mustAllow(t, e.Acquire("A", fileA))
+	env.files[fileA] = "v2"
+	env.clean[fileA] = true // A committed its change before the turn ended
+	e.EndTurn("A")
+	if got := e.St.Touched[fileA]; len(got) != 0 {
+		t.Fatalf("committed change recorded as uncommitted: %+v", got)
+	}
+}
+
 func TestForcedReleaseHandsOn(t *testing.T) {
 	env := newFakeEnv()
 	e := newEngine(env)

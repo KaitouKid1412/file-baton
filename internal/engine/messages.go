@@ -111,13 +111,13 @@ func (e *Engine) ForeignText(list []Foreign) string {
 		}
 		fmt.Fprintf(&b, "  %s  session %s%s%s\n", rel, Short(f.Session), ended, task)
 	}
-	b.WriteString("Commit only your own changes instead, for example:\n")
+	b.WriteString("Commit only your own changes instead, by naming your files:\n")
+	b.WriteString("  git commit -m \"...\" -- <your files>\n")
 	quoted := make([]string, len(rels))
 	for i, r := range rels {
 		quoted[i] = quoteArg(r)
 	}
-	fmt.Fprintf(&b, "  git restore --staged %s   and then commit\n", strings.Join(quoted, " "))
-	b.WriteString("  git commit -m \"...\" -- <your files>\n")
+	fmt.Fprintf(&b, "If their changes are staged, unstage them first: git restore --staged %s\n", strings.Join(quoted, " "))
 	b.WriteString("Only if the user explicitly asked to commit everything, run the command again prefixed with FILE_BATON_ALLOW=1.")
 	return b.String()
 }
