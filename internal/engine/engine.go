@@ -83,12 +83,19 @@ func (e *Engine) Seen(sid string, pid int, transcript string) *state.Session {
 	return s
 }
 
+// notificationPrefixes open the messages Claude Code delivers as prompts that
+// nobody typed: a background hook waking the session, a finished background
+// task, a message from another session.
+var notificationPrefixes = []string{"<task-notification>", "<cross-session-message"}
+
 // SetTask records the session's latest prompt as its current task.
-// Notifications Claude Code delivers as prompts (a background hook waking the
-// session, a finished background task) are not tasks and are ignored.
+// Notifications are not tasks and are ignored.
 func (e *Engine) SetTask(sid, prompt string) {
-	if strings.HasPrefix(strings.TrimSpace(prompt), "<task-notification>") {
-		return
+	trimmed := strings.TrimSpace(prompt)
+	for _, p := range notificationPrefixes {
+		if strings.HasPrefix(trimmed, p) {
+			return
+		}
 	}
 	if s := e.St.Sessions[sid]; s != nil {
 		s.Task = oneLine(prompt, MaxTaskLen)

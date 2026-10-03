@@ -318,6 +318,7 @@ func TestNotificationsAreNotTasks(t *testing.T) {
 	e.Seen("A", 1, "")
 	e.SetTask("A", "add validation")
 	e.SetTask("A", "<task-notification>\n<summary>Stop hook feedback</summary>\n</task-notification>\nfile-baton: you now hold a.go")
+	e.SetTask("A", `<cross-session-message from="uds:/tmp/cc-socks/22822.sock" from-name="mantle-01" from-mode="prompting"> From mantle-01: please confirm these shapes`)
 	if got := e.St.Sessions["A"].Task; got != "add validation" {
 		t.Fatalf("task = %q", got)
 	}
