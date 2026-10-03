@@ -120,3 +120,9 @@ Changes after a new-user install test (install from a clone of the committed rep
 - Release binaries are committed under `libexec/<os>-<arch>/`; development builds go to the gitignored `libexec/dev/`. Without committed binaries the plugin installed "successfully" and did nothing.
 - `userConfig` was removed; settings are `FILE_BATON_*` environment variables only.
 - The missing-binary message tells users to update or reinstall, not to run `make build`.
+
+Changes after the owner's first interactive run (v0.1.2):
+
+- No blocking note request at Stop: it showed up as "Stop hook error" plus an extra reply in the holder's terminal. The heads-up during the turn invites notes instead.
+- The refusal starts with "<file> is busy … This is expected, not a failure." Claude Code labels every blocking hook "hook error" (JSON deny and exit 2 alike; exit 2 also prints the command), so the wording after the label is what file-baton controls.
+- Wake-up notifications (`<task-notification>…`) arrive through UserPromptSubmit and were recorded as the session's task; they are ignored now.

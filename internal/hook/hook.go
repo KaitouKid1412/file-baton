@@ -137,8 +137,3 @@ func addContext(context string) any {
 	}
 	return preToolUse{preToolUseFields{HookEventName: "PreToolUse", AdditionalContext: context}}
 }
-
-type stopBlock struct {
-	Decision string `json:"decision"`
-	Reason   string `json:"reason"`
-}

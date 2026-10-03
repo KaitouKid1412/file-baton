@@ -207,7 +207,7 @@ func TestTwoSessionsAreSerializedWithHandoff(t *testing.T) {
 	a.hook("prompt", map[string]any{"prompt": "add a doc comment to A"})
 
 	expect(t, a.edit("a.go"), "")
-	expect(t, b.edit("a.go"), "deny", "being edited by another Claude session (aaaaaaaa)", "add a doc comment to A", "#1 in line")
+	expect(t, b.edit("a.go"), "deny", "a.go is busy: another Claude session (aaaaaaaa) is editing it", "expected, not a failure", "add a doc comment to A", "#1 in line")
 
 	// A changes the file, then its next tool call carries the heads-up.
 	r.write("a.go", "package a\n\n// A does nothing.\nfunc A() {}\n")
@@ -219,19 +219,20 @@ func TestTwoSessionsAreSerializedWithHandoff(t *testing.T) {
 		t.Fatalf("B's note should fail: %+v", res)
 	}
 
-	expect(t, a.stop(), "") // notes exist, so the turn ends and the file is handed on
+	expect(t, a.stop(), "")
 	expect(t, b.edit("a.go"), "deny", "you now hold a.go", "added a doc comment", "+// A does nothing.", "Re-read the file")
 	expect(t, b.edit("a.go"), "")
-	expect(t, a.edit("a.go"), "deny", "being edited by another Claude session (bbbbbbbb)")
+	expect(t, a.edit("a.go"), "deny", "another Claude session (bbbbbbbb) is editing it")
 }
 
-func TestStopAsksForNotesOnceWhenSomeoneWaits(t *testing.T) {
+// The holder's turn ends without a blocking request for notes, which Claude
+// Code would show to the user as a "Stop hook error".
+func TestStopReleasesWithoutAskingForNotes(t *testing.T) {
 	r := newRepo(t)
 	a := r.session("aaaaaaaa", os.Getpid())
 	b := r.session("bbbbbbbb", os.Getpid())
 	expect(t, a.edit("a.go"), "")
 	expect(t, b.edit("a.go"), "deny")
-	expect(t, a.stop(), "block", "waiting for files you edited: a.go")
 	expect(t, a.stop(), "")
 	expect(t, b.edit("a.go"), "deny", "you now hold a.go")
 }
@@ -253,7 +254,6 @@ func TestWaiterWakesTheWaitingSessionExactlyOnce(t *testing.T) {
 	default:
 	}
 
-	expect(t, a.stop(), "block") // asks A for notes first
 	expect(t, a.stop(), "")
 	res := <-done
 	if res.code != 2 || !strings.Contains(res.stderr, "you now hold a.go") || !strings.Contains(res.stderr, "Continue the work") {
@@ -280,7 +280,6 @@ func TestNewerWaiterSupersedesOlder(t *testing.T) {
 	if res := <-first; res.code != 0 {
 		t.Fatalf("older waiter should step aside: %+v", res)
 	}
-	expect(t, a.stop(), "block")
 	expect(t, a.stop(), "")
 	if res := <-second; res.code != 2 {
 		t.Fatalf("newer waiter should deliver: %+v", res)

@@ -82,7 +82,12 @@ func (e *Engine) Seen(sid string, pid int, transcript string) *state.Session {
 }
 
 // SetTask records the session's latest prompt as its current task.
+// Notifications Claude Code delivers as prompts (a background hook waking the
+// session, a finished background task) are not tasks and are ignored.
 func (e *Engine) SetTask(sid, prompt string) {
+	if strings.HasPrefix(strings.TrimSpace(prompt), "<task-notification>") {
+		return
+	}
 	if s := e.St.Sessions[sid]; s != nil {
 		s.Task = oneLine(prompt, MaxTaskLen)
 	}
@@ -227,27 +232,6 @@ func (e *Engine) HeadsUp(sid string) string {
 		return ""
 	}
 	return e.headsUpText(rels)
-}
-
-// NotesRequest returns a request for handoff notes when the session is about
-// to release files other sessions wait for and has not left notes on them.
-// Each holding is asked at most once.
-func (e *Engine) NotesRequest(sid string) string {
-	var rels []string
-	for _, path := range e.lockPaths() {
-		l := e.St.Locks[path]
-		if l == nil || l.Owner != sid || l.Status != state.Held {
-			continue
-		}
-		if len(l.Queue) > 0 && len(l.Notes) == 0 && !l.NotesAsked {
-			l.NotesAsked = true
-			rels = append(rels, e.Rel(path))
-		}
-	}
-	if len(rels) == 0 {
-		return ""
-	}
-	return e.notesRequestText(rels)
 }
 
 // AddNote attaches a handoff note to a lock the session holds.
@@ -396,7 +380,6 @@ func (e *Engine) grantNext(l *state.Lock, h *state.Handoff) {
 	l.Snapshot = ""
 	l.Notes = nil
 	l.Told = nil
-	l.NotesAsked = false
 	l.Handoff = h
 }
 

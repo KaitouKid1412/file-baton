@@ -233,23 +233,15 @@ func stop(c *ctx) (any, int, error) {
 		return nil, 0, nil
 	}
 	sid := c.in.SessionID
-	var request string
 	err := c.app.Update(func(e *engine.Engine) error {
 		e.Seen(sid, c.pid, c.in.TranscriptPath)
-		if request = e.NotesRequest(sid); request == "" {
-			e.EndTurn(sid)
-		}
+		e.EndTurn(sid)
 		return nil
 	})
-	if err != nil {
-		return nil, 0, err
+	if err == nil {
+		c.app.Logf(sid, "stop", "released turn locks")
 	}
-	if request != "" {
-		c.app.Logf(sid, "stop", "asked for handoff notes")
-		return stopBlock{Decision: "block", Reason: request}, 0, nil
-	}
-	c.app.Logf(sid, "stop", "released turn locks")
-	return nil, 0, nil
+	return nil, 0, err
 }
 
 // wait runs in the background after every turn (asyncRewake). While the

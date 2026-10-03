@@ -14,15 +14,15 @@ func (e *Engine) blockedText(l *state.Lock, sid string) string {
 	var b strings.Builder
 	who := Short(l.Owner)
 	if l.Status == state.Granted {
-		fmt.Fprintf(&b, "file-baton: %s has been handed to another Claude session (%s) that was waiting for it.\n", e.Rel(l.Path), who)
+		fmt.Fprintf(&b, "file-baton: %s is busy: it was handed to another Claude session (%s) that was waiting for it. This is expected, not a failure.\n", e.Rel(l.Path), who)
 	} else {
-		fmt.Fprintf(&b, "file-baton: %s is being edited by another Claude session (%s).\n", e.Rel(l.Path), who)
+		fmt.Fprintf(&b, "file-baton: %s is busy: another Claude session (%s) is editing it. This is expected, not a failure.\n", e.Rel(l.Path), who)
 	}
 	if s := e.St.Sessions[l.Owner]; s != nil && s.Task != "" {
 		fmt.Fprintf(&b, "Their task: %q\n", s.Task)
 	}
 	pos := slices.IndexFunc(l.Queue, func(w state.Waiter) bool { return w.Session == sid }) + 1
-	fmt.Fprintf(&b, "You are #%d in line. Do other parts of your task first, and do not work around this by changing the file another way (for example with a shell command).\n", pos)
+	fmt.Fprintf(&b, "You are #%d in line. Work on other parts of your task meanwhile, and do not change this file another way (for example with a shell command).\n", pos)
 	if e.Cfg.AutoResume {
 		b.WriteString("When they finish you will be given the file with a summary of their changes; if you are idle by then you will be woken up automatically.")
 	} else {
@@ -79,16 +79,9 @@ const releasedAutomatically = "Files are released automatically when your turn e
 
 func (e *Engine) headsUpText(rels []string) string {
 	return fmt.Sprintf("file-baton: another Claude session is now waiting for %s, which you are editing. "+
-		"Before you finish, leave a short note on what you changed and why, so they can pick up cleanly:\n  %s note %s \"<what changed and why>\"\n%s",
+		"It will get your diff and task automatically when your turn ends. If anything about your changes is not obvious "+
+		"from the diff (intent, follow-ups, things to avoid), leave a short note before you finish:\n  %s note %s \"<note>\"\n%s",
 		strings.Join(rels, ", "), e.cli(), quoteArg(rels[0]), releasedAutomatically)
-}
-
-func (e *Engine) notesRequestText(rels []string) string {
-	return fmt.Sprintf("file-baton: other Claude sessions are waiting for files you edited: %s. "+
-		"They will receive your diff automatically. If anything about your changes is not obvious from the diff "+
-		"(intent, follow-ups, things to avoid), leave a note now:\n  %s note <file> \"<note>\"\n"+
-		"Then simply finish your turn, or finish right away if no note is needed. %s",
-		strings.Join(rels, ", "), e.cli(), releasedAutomatically)
 }
 
 // ForeignText explains a refused commit.

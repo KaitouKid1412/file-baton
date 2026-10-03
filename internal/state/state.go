@@ -46,7 +46,6 @@ type Lock struct {
 	Notes      []string  `json:"notes,omitempty"`
 	Handoff    *Handoff  `json:"handoff,omitempty"`
 	Told       []string  `json:"told,omitempty"`
-	NotesAsked bool      `json:"notes_asked,omitempty"`
 }
 
 // Waiter is a session queued for a lock.

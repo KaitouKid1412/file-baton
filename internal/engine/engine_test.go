@@ -113,7 +113,7 @@ func TestBlockedSessionIsQueuedOnce(t *testing.T) {
 	e.Seen("B", 2, "")
 	e.Seen("C", 3, "")
 	mustAllow(t, e.Acquire("A", fileA))
-	mustDeny(t, e.Acquire("B", fileA), "a.go is being edited", `"add pagination to the list endpoint"`, "#1 in line", "woken up")
+	mustDeny(t, e.Acquire("B", fileA), "a.go is busy: another Claude session (A) is editing it", "expected, not a failure", `"add pagination to the list endpoint"`, "#1 in line", "woken up")
 	mustDeny(t, e.Acquire("C", fileA), "#2 in line")
 	mustDeny(t, e.Acquire("B", fileA), "#1 in line")
 	if q := e.St.Locks[fileA].Queue; len(q) != 2 {
@@ -289,42 +289,37 @@ func TestEndSessionLeavesEverything(t *testing.T) {
 	}
 }
 
-func TestHeadsUpAndNotesRequestAreAskedOnce(t *testing.T) {
+func TestHeadsUpIsGivenOncePerWaiter(t *testing.T) {
 	env := newFakeEnv()
 	e := newEngine(env)
 	e.Seen("A", 1, "")
 	e.Seen("B", 2, "")
+	e.Seen("C", 3, "")
 	mustAllow(t, e.Acquire("A", fileA))
-	if e.HeadsUp("A") != "" || e.NotesRequest("A") != "" {
+	if e.HeadsUp("A") != "" {
 		t.Fatal("nobody waits yet")
 	}
 	mustDeny(t, e.Acquire("B", fileA))
-	if h := e.HeadsUp("A"); !strings.Contains(h, `"/plugin/libexec/file-baton" note a.go`) {
+	if h := e.HeadsUp("A"); !strings.Contains(h, `"/plugin/libexec/file-baton" note a.go`) || !strings.Contains(h, "released automatically") {
 		t.Fatalf("heads-up = %q", h)
 	}
 	if e.HeadsUp("A") != "" {
-		t.Fatal("heads-up repeated")
+		t.Fatal("heads-up repeated for the same waiter")
 	}
-	if r := e.NotesRequest("A"); !strings.Contains(r, "a.go") {
-		t.Fatalf("notes request = %q", r)
-	}
-	if e.NotesRequest("A") != "" {
-		t.Fatal("notes request repeated")
+	mustDeny(t, e.Acquire("C", fileA))
+	if e.HeadsUp("A") == "" {
+		t.Fatal("a new waiter should produce a new heads-up")
 	}
 }
 
-func TestNoNotesRequestWhenNotesExist(t *testing.T) {
+func TestNotificationsAreNotTasks(t *testing.T) {
 	env := newFakeEnv()
 	e := newEngine(env)
 	e.Seen("A", 1, "")
-	e.Seen("B", 2, "")
-	mustAllow(t, e.Acquire("A", fileA))
-	mustDeny(t, e.Acquire("B", fileA))
-	if err := e.AddNote("A", fileA, "done"); err != nil {
-		t.Fatal(err)
-	}
-	if r := e.NotesRequest("A"); r != "" {
-		t.Fatalf("notes request = %q", r)
+	e.SetTask("A", "add validation")
+	e.SetTask("A", "<task-notification>\n<summary>Stop hook feedback</summary>\n</task-notification>\nfile-baton: you now hold a.go")
+	if got := e.St.Sessions["A"].Task; got != "add validation" {
+		t.Fatalf("task = %q", got)
 	}
 }
 

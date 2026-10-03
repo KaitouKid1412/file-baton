@@ -56,7 +56,7 @@ responding; its unfinished changes are below."
 ## Telling the holder someone is waiting
 
 - **Heads-up.** When the holder next runs `pre-edit` or `pre-bash` and a waiter is not yet in `Told`, add `additionalContext`: "file-baton: session X is waiting for src/api.ts. Before you finish, leave a short note on what you changed and why: `<cli> note src/api.ts "<note>"`." Add X to `Told`.
-- **At Stop.** If the session holds a lock with waiters, no notes and `NotesAsked` false, answer `{"decision":"block","reason":…}` asking for notes (or to just finish if none are needed), set the lock's `NotesAsked`, and do **not** release yet. The next Stop releases. The flag is per holding because `stop_hook_active` is also true after an asyncRewake wake-up.
+- **At Stop: removed in v0.1.2.** v0.1.0 blocked the holder's Stop once to ask for notes. Claude Code shows a blocking Stop as "Stop hook error" in the holder's terminal, and Claude answered it with an extra reply, usually "no note needed". The diff and task already reach the waiter, so the heads-up during the turn is the only invitation now.
 
 ## Config used here
 

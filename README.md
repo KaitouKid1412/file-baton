@@ -42,10 +42,11 @@ Sessions that were already open pick it up after `/reload-plugins` or a restart.
 The waiting session:
 
 ```
-file-baton: utils.py is being edited by another Claude session (3f2a91c0).
+file-baton: utils.py is busy: another Claude session (3f2a91c0) is editing it. This is
+expected, not a failure.
 Their task: "Add input validation to every function in utils.py, then run the tests."
-You are #1 in line. Do other parts of your task first, and do not work around this
-by changing the file another way (for example with a shell command).
+You are #1 in line. Work on other parts of your task meanwhile, and do not change this
+file another way (for example with a shell command).
 When they finish you will be given the file with a summary of their changes; if you
 are idle by then you will be woken up automatically.
 ```
@@ -64,6 +65,11 @@ Their changes:
 ...
 Re-read the file before editing; your earlier view of it is out of date.
 ```
+
+Claude Code shows these messages with a "hook error" label (for example
+`PreToolUse:Write hook error: file-baton: utils.py is busy…`). That is its wording for any
+hook that holds a tool call back; nothing is broken. The session that holds the file sees
+no such message.
 
 ## Commands
 
@@ -125,7 +131,7 @@ are identified by Claude Code's session id; liveness is the `CLAUDE_PID` process
 |---|---|
 | `PreToolUse` on Edit/Write/MultiEdit/NotebookEdit | take the file, queue for it, or deliver a handoff |
 | `PreToolUse` on Bash | commit guard; approve file-baton's own `note`/`status` calls |
-| `Stop` | ask for a handoff note if someone waits; release the turn's files |
+| `Stop` | release the turn's files and hand them to whoever waits |
 | `Stop` (background, `asyncRewake`) | wake this session once when a file reaches it |
 | `UserPromptSubmit` | remember the session's current task |
 | `SessionStart` / `SessionEnd` | register / release everything |
