@@ -335,6 +335,48 @@ func TestCommitGuard(t *testing.T) {
 	expect(t, b.bash(`git commit -am "B's change"`), "") // A's change is committed: pruned
 }
 
+// Committing a file hands it to the next session right away, mid-turn; files
+// the commit did not take stay held.
+func TestCommitReleasesCommittedFiles(t *testing.T) {
+	r := newRepo(t)
+	a := r.session("aaaaaaaa", os.Getpid())
+	b := r.session("bbbbbbbb", os.Getpid())
+	expect(t, a.edit("a.go"), "")
+	expect(t, a.edit("b.go"), "")
+	expect(t, b.edit("a.go"), "deny")
+	r.write("a.go", "package a\n\n// A.\nfunc A() {}\n")
+	r.write("b.go", "package a\n\n// B.\nfunc B() {}\n")
+
+	r.git("commit", "-q", "-m", "A's change", "--", "a.go")
+	res := a.hook("post-bash", map[string]any{"tool_name": "Bash", "tool_input": map[string]any{"command": `git commit -m "A's change" -- a.go`}})
+	if !strings.Contains(res.text(), "you committed a.go") {
+		t.Fatalf("committer not told: %+v", res)
+	}
+	expect(t, b.edit("a.go"), "deny", "Session aaaaaaaa committed its changes to it", "+// A.")
+	expect(t, b.edit("a.go"), "")
+	expect(t, b.edit("b.go"), "deny", "b.go is busy") // not committed: A still holds it
+
+	// A command without a commit releases nothing.
+	expect(t, a.hook("post-bash", map[string]any{"tool_input": map[string]any{"command": "go test ./..."}}), "")
+}
+
+// A file its holder has not edited for the hold limit is released mid-turn.
+func TestHoldLimitReleasesMidTurn(t *testing.T) {
+	r := newRepo(t)
+	a := r.session("aaaaaaaa", os.Getpid())
+	b := r.session("bbbbbbbb", os.Getpid())
+	short := "FILE_BATON_HOLD_MINUTES=0.01" // 0.6 s
+	editAs := func(s *session, name string) result {
+		return s.hook("pre-edit", map[string]any{"tool_input": map[string]any{"file_path": r.path(name)}}, short)
+	}
+	expect(t, editAs(a, "a.go"), "")
+	expect(t, editAs(b, "a.go"), "deny", "a.go is busy")
+	time.Sleep(900 * time.Millisecond)
+	expect(t, editAs(b, "a.go"), "deny", "has not edited it for", "so it was released")
+	expect(t, editAs(b, "a.go"), "")
+	expect(t, editAs(a, "a.go"), "deny", "a.go is busy") // A comes back: now it waits
+}
+
 // A session that commits its own change before its turn ends must not be
 // blamed later for someone else's edit of the same file.
 func TestCommittedChangeIsNotBlamedLater(t *testing.T) {

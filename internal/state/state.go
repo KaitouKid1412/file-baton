@@ -41,6 +41,7 @@ type Lock struct {
 	Owner    string    `json:"owner"`
 	Status   string    `json:"status"`
 	Since    time.Time `json:"since"`
+	LastEdit time.Time `json:"last_edit"`
 	Snapshot string    `json:"snapshot,omitempty"`
 	Queue    []Waiter  `json:"queue,omitempty"`
 	Notes    []string  `json:"notes,omitempty"`

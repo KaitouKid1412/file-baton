@@ -120,6 +120,42 @@ func preBash(c *ctx) (any, int, error) {
 	return addContext(heads), 0, nil
 }
 
+// postBash releases files right after the session commits them: a commit is
+// the clearest sign a session is done with a file for now. Files git still
+// sees as changed (not in the commit, or the commit failed) stay held.
+func postBash(c *ctx) (any, int, error) {
+	var input struct {
+		Command string `json:"command"`
+	}
+	_ = json.Unmarshal(c.in.ToolInput, &input)
+	if len(gitx.ParseCommits(input.Command)) == 0 {
+		return nil, 0, nil
+	}
+	sid := c.in.SessionID
+	var released, handedOn []string
+	var text string
+	err := c.app.Update(func(e *engine.Engine) error {
+		e.Seen(sid, c.pid, c.in.TranscriptPath)
+		released, handedOn = e.ReleaseCommitted(sid)
+		if len(handedOn) > 0 {
+			rels := make([]string, len(handedOn))
+			for i, p := range handedOn {
+				rels[i] = c.app.Repo.Rel(p)
+			}
+			text = e.CommittedText(rels)
+		}
+		return nil
+	})
+	if err != nil || len(released) == 0 {
+		return nil, 0, err
+	}
+	c.app.Logf(sid, "post-bash", "released %d committed file(s), %d handed on", len(released), len(handedOn))
+	if text == "" {
+		return nil, 0, nil
+	}
+	return postToolUse{postToolUseFields{HookEventName: "PostToolUse", AdditionalContext: text}}, 0, nil
+}
+
 // checkCommit works out which other sessions' changes a commit would include.
 func (c *ctx) checkCommit(plan gitx.CommitPlan) ([]engine.Foreign, *app.App, error) {
 	dir := c.in.Cwd

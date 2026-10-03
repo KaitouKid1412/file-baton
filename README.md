@@ -2,7 +2,7 @@
 
 Run several Claude Code sessions in the same git checkout without them stepping on each other.
 
-- **One editor per file.** A session that edits a file holds its baton until its turn ends. Another session that tries to edit it is told who has it and waits in line.
+- **One editor per file.** A session that edits a file holds its baton until it commits the file, stops editing it for 10 minutes, or finishes its turn. Another session that tries to edit it is told who has it and waits in line.
 - **Handoff with context.** When the holder finishes, the next session gets the file together with the holder's diff, task and notes.
 - **Auto-resume.** A waiting session that went idle wakes up by itself when the file reaches it.
 - **Commit guard.** A `git commit` that would sweep in another session's uncommitted work is refused.
@@ -71,6 +71,19 @@ Claude Code shows these messages with a "hook error" label (for example
 hook that holds a tool call back; nothing is broken. The session that holds the file sees
 no such message.
 
+## When a file is released
+
+| When | What happens |
+|---|---|
+| The session commits the file | Released right after the commit, even mid-turn |
+| The session hasn't edited it for 10 minutes | Released, even mid-turn (`FILE_BATON_HOLD_MINUTES`) |
+| The session's turn ends | Every file it edited is released |
+| The session exits or crashes | Released immediately |
+| The session goes quiet for 20 minutes | Released (covers an interrupted turn) |
+| You run `/file-baton:release` | Released by hand |
+
+Whoever is waiting gets the file next, with the summary of what changed.
+
 ## Commands
 
 | Command | What it does |
@@ -88,6 +101,7 @@ Defaults work for most people. To change them, set environment variables before 
 |---|---|---|
 | `FILE_BATON_AUTO_RESUME` | `true` | Wake an idle session when a file it waits for reaches it |
 | `FILE_BATON_COMMIT_GUARD` | `true` | Refuse commits that include other sessions' changes |
+| `FILE_BATON_HOLD_MINUTES` | `10` | Release a file its holder hasn't edited for this long, even mid-turn (`0` = never) |
 | `FILE_BATON_GRANT_TIMEOUT_MINUTES` | `10` | How long a handed-over file stays reserved while others wait |
 | `FILE_BATON_IDLE_RELEASE_MINUTES` | `20` | Release a session's files after this long without activity |
 | `FILE_BATON_MAX_DIFF_LINES` | `200` | Lines of diff included in a handoff |
@@ -131,6 +145,7 @@ are identified by Claude Code's session id; liveness is the `CLAUDE_PID` process
 |---|---|
 | `PreToolUse` on Edit/Write/MultiEdit/NotebookEdit | take the file, queue for it, or deliver a handoff |
 | `PreToolUse` on Bash | commit guard; approve file-baton's own `note`/`status` calls |
+| `PostToolUse` on Bash | after a commit, release the files it took |
 | `Stop` | release the turn's files and hand them to whoever waits |
 | `Stop` (background, `asyncRewake`) | wake this session once when a file reaches it |
 | `UserPromptSubmit` | remember the session's current task |

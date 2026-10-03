@@ -47,6 +47,7 @@ var handlers = map[string]handler{
 	"prompt":        prompt,
 	"pre-edit":      preEdit,
 	"pre-bash":      preBash,
+	"post-bash":     postBash,
 	"stop":          stop,
 	"wait":          wait,
 	"session-end":   sessionEnd,
@@ -54,7 +55,7 @@ var handlers = map[string]handler{
 
 // Events lists the hook events file-baton handles.
 func Events() []string {
-	return []string{"session-start", "prompt", "pre-edit", "pre-bash", "stop", "wait", "session-end"}
+	return []string{"session-start", "prompt", "pre-edit", "pre-bash", "post-bash", "stop", "wait", "session-end"}
 }
 
 // Run handles one hook event and returns the process exit code.
@@ -121,6 +122,15 @@ type preToolUseFields struct {
 	PermissionDecision       string `json:"permissionDecision,omitempty"`
 	PermissionDecisionReason string `json:"permissionDecisionReason,omitempty"`
 	AdditionalContext        string `json:"additionalContext,omitempty"`
+}
+
+type postToolUse struct {
+	HookSpecificOutput postToolUseFields `json:"hookSpecificOutput"`
+}
+
+type postToolUseFields struct {
+	HookEventName     string `json:"hookEventName"`
+	AdditionalContext string `json:"additionalContext,omitempty"`
 }
 
 func deny(reason string) any {

@@ -4,14 +4,30 @@
     "SessionStart": [
       {
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "session-start"], "timeout": 10 }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "session-start"
+            ],
+            "timeout": 10
+          }
         ]
       }
     ],
     "UserPromptSubmit": [
       {
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "prompt"], "timeout": 10 }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "prompt"
+            ],
+            "timeout": 10
+          }
         ]
       }
     ],
@@ -19,28 +35,85 @@
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "pre-edit"], "timeout": 10 }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "pre-edit"
+            ],
+            "timeout": 10
+          }
         ]
       },
       {
         "matcher": "Bash",
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "pre-bash"], "timeout": 10 }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "pre-bash"
+            ],
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "post-bash"
+            ],
+            "timeout": 10
+          }
         ]
       }
     ],
     "Stop": [
       {
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "stop"], "timeout": 10 },
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "wait"], "timeout": 3600, "asyncRewake": true }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "stop"
+            ],
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "wait"
+            ],
+            "timeout": 3600,
+            "asyncRewake": true
+          }
         ]
       }
     ],
     "SessionEnd": [
       {
         "hooks": [
-          { "type": "command", "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton", "args": ["hook", "session-end"], "timeout": 5 }
+          {
+            "type": "command",
+            "command": "${CLAUDE_PLUGIN_ROOT}/libexec/file-baton",
+            "args": [
+              "hook",
+              "session-end"
+            ],
+            "timeout": 5
+          }
         ]
       }
     ]

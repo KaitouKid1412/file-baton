@@ -15,6 +15,7 @@ type Config struct {
 	CommitGuard  bool
 	GrantTimeout time.Duration
 	IdleRelease  time.Duration
+	HoldTimeout  time.Duration // 0: no limit
 	MaxDiffLines int
 	Disabled     bool
 }
@@ -26,6 +27,7 @@ func Default() Config {
 		CommitGuard:  true,
 		GrantTimeout: 10 * time.Minute,
 		IdleRelease:  20 * time.Minute,
+		HoldTimeout:  10 * time.Minute,
 		MaxDiffLines: 200,
 	}
 }
@@ -65,6 +67,11 @@ func Load(getenv func(string) string) (Config, []string) {
 	boolean("DISABLED", &c.Disabled)
 	minutes("GRANT_TIMEOUT_MINUTES", &c.GrantTimeout)
 	minutes("IDLE_RELEASE_MINUTES", &c.IdleRelease)
+	if v := strings.TrimSpace(lookup("HOLD_MINUTES")); v == "0" {
+		c.HoldTimeout = 0
+	} else {
+		minutes("HOLD_MINUTES", &c.HoldTimeout)
+	}
 	if v := lookup("MAX_DIFF_LINES"); v != "" {
 		n, err := strconv.Atoi(strings.TrimSpace(v))
 		if err != nil || n < 0 {

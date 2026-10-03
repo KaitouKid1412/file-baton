@@ -16,11 +16,13 @@ import (
 
 // Reasons a lock changed hands.
 const (
-	ReasonReleased = "released" // the owner's turn ended
-	ReasonCrashed  = "crashed"  // the owner's process is gone
-	ReasonIdle     = "idle"     // the owner showed no activity for too long
-	ReasonEnded    = "ended"    // the owner's session ended
-	ReasonForced   = "forced"   // the user released it by hand
+	ReasonReleased  = "released"  // the owner's turn ended
+	ReasonCrashed   = "crashed"   // the owner's process is gone
+	ReasonIdle      = "idle"      // the owner showed no activity for too long
+	ReasonEnded     = "ended"     // the owner's session ended
+	ReasonForced    = "forced"    // the user released it by hand
+	ReasonCommitted = "committed" // the owner committed its changes
+	ReasonExpired   = "expired"   // the owner has not edited it for the hold limit
 )
 
 // Note limits.
@@ -117,6 +119,8 @@ func (e *Engine) Reap() {
 			e.passOn(l)
 		case l.Status == state.Held && now.Sub(e.Env.LastActivity(owner)) > e.Cfg.IdleRelease:
 			e.release(l, ReasonIdle)
+		case l.Status == state.Held && e.Cfg.HoldTimeout > 0 && now.Sub(lastEdit(l)) > e.Cfg.HoldTimeout:
+			e.release(l, ReasonExpired)
 		case l.Status == state.Granted:
 			e.expireGrant(l)
 		}
@@ -127,11 +131,13 @@ func (e *Engine) Reap() {
 func (e *Engine) Acquire(sid, path string) Decision {
 	l := e.St.Locks[path]
 	if l == nil {
+		now := e.Env.Now()
 		e.St.Locks[path] = &state.Lock{
 			Path:     path,
 			Owner:    sid,
 			Status:   state.Held,
-			Since:    e.Env.Now(),
+			Since:    now,
+			LastEdit: now,
 			Snapshot: e.Env.Snapshot(path, sid),
 		}
 		return Decision{}
@@ -148,7 +154,26 @@ func (e *Engine) Acquire(sid, path string) Decision {
 		e.hold(l)
 		return Decision{Deny: true, Reason: text}
 	}
+	l.LastEdit = e.Env.Now()
 	return Decision{}
+}
+
+// ReleaseCommitted releases the session's held files that git now sees as
+// clean, which after a commit means the commit took them. It returns the files
+// released and, of those, the ones handed straight to a waiting session.
+func (e *Engine) ReleaseCommitted(sid string) (released, handedOn []string) {
+	for _, path := range e.lockPaths() {
+		l := e.St.Locks[path]
+		if l == nil || l.Owner != sid || l.Status != state.Held || !e.Env.IsClean(path) {
+			continue
+		}
+		e.release(l, ReasonCommitted)
+		released = append(released, path)
+		if next := e.St.Locks[path]; next != nil && next.Owner != sid {
+			handedOn = append(handedOn, path)
+		}
+	}
+	return released, handedOn
 }
 
 // EndTurn releases every lock the session held during its turn. Locks granted
@@ -411,6 +436,7 @@ func (e *Engine) expireGrant(l *state.Lock) {
 func (e *Engine) hold(l *state.Lock) {
 	l.Status = state.Held
 	l.Since = e.Env.Now()
+	l.LastEdit = l.Since
 	l.Snapshot = e.Env.Snapshot(l.Path, l.Owner)
 	l.Handoff = nil
 }
@@ -434,6 +460,15 @@ func (e *Engine) addTouch(path, sid, task string) {
 		}
 	}
 	e.St.Touched[path] = append(touches, state.Touch{Session: sid, Task: task, At: now})
+}
+
+// lastEdit is when the owner last edited the file; locks saved before
+// LastEdit existed fall back to when they were taken.
+func lastEdit(l *state.Lock) time.Time {
+	if l.LastEdit.IsZero() {
+		return l.Since
+	}
+	return l.LastEdit
 }
 
 // lockPaths returns the lock keys sorted, so iteration that mutates the map is

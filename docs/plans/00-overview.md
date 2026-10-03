@@ -99,6 +99,7 @@ without processes, git or the filesystem.
 3. `03-commit-guard.md`: tracking uncommitted changes per session, commit interception.
 4. `04-cli-and-commands.md`: note/status/release CLI, slash commands, config.
 5. `05-packaging.md`: launcher, manifests, build, tests, end-to-end run, release.
+6. `06-earlier-release.md`: release on commit and a per-file hold limit (v0.2.0).
 
 Each phase ends with `go test ./...` green and `claude plugin validate .` passing.
 
@@ -126,3 +127,5 @@ Changes after the owner's first interactive run (v0.1.2):
 - No blocking note request at Stop: it showed up as "Stop hook error" plus an extra reply in the holder's terminal. The heads-up during the turn invites notes instead.
 - The refusal starts with "<file> is busy … This is expected, not a failure." Claude Code labels every blocking hook "hook error" (JSON deny and exit 2 alike; exit 2 also prints the command), so the wording after the label is what file-baton controls.
 - Wake-up notifications (`<task-notification>…`) arrive through UserPromptSubmit and were recorded as the session's task; they are ignored now.
+
+v0.2.0 (plan 06): files are released when the session commits them and after 10 minutes without an edit, not only at the end of the turn. Long background turns (a whole plan in one prompt) no longer hold shared files for hours. Verified with real sessions: the second session edited the file right after the first committed it, 28 s before the first session's turn ended.

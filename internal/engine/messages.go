@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/KaitouKid1412/file-baton/internal/state"
 )
@@ -53,6 +54,10 @@ func (e *Engine) handoffText(l *state.Lock) string {
 		fmt.Fprintf(&b, "Session %s exited.%s\n", from, task)
 	case ReasonForced:
 		fmt.Fprintf(&b, "The user released it from session %s.%s\n", from, task)
+	case ReasonCommitted:
+		fmt.Fprintf(&b, "Session %s committed its changes to it.%s\n", from, task)
+	case ReasonExpired:
+		fmt.Fprintf(&b, "Session %s has not edited it for %s and is working on other things, so it was released.%s\n", from, minutesText(e.Cfg.HoldTimeout), task)
 	default:
 		fmt.Fprintf(&b, "Session %s finished with it.%s\n", from, task)
 	}
@@ -72,6 +77,20 @@ func (e *Engine) handoffText(l *state.Lock) string {
 	b.WriteString("Re-read the file before editing; your earlier view of it is out of date.\n")
 	b.WriteString(releasedAutomatically)
 	return b.String()
+}
+
+func minutesText(d time.Duration) string {
+	if m := d.Minutes(); m == float64(int(m)) {
+		return fmt.Sprintf("%d minutes", int(m))
+	}
+	return d.Round(time.Second).String()
+}
+
+// CommittedText tells a committer that files it just committed went to
+// sessions waiting for them.
+func (e *Engine) CommittedText(rels []string) string {
+	return fmt.Sprintf("file-baton: you committed %s, so it was handed to a Claude session that was waiting for it. "+
+		"If you edit it again you may have to wait your turn.", strings.Join(rels, ", "))
 }
 
 // releasedAutomatically keeps Claude from looking for a way to release files.

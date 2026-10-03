@@ -29,3 +29,17 @@ func TestDefaults(t *testing.T) {
 		t.Fatalf("config = %+v, warnings = %v", c, warnings)
 	}
 }
+
+func TestHoldMinutes(t *testing.T) {
+	for v, want := range map[string]time.Duration{"": 10 * time.Minute, "0": 0, "2.5": 150 * time.Second, "-1": 10 * time.Minute} {
+		c, _ := Load(func(k string) string {
+			if k == "FILE_BATON_HOLD_MINUTES" {
+				return v
+			}
+			return ""
+		})
+		if c.HoldTimeout != want {
+			t.Errorf("HOLD_MINUTES=%q: got %v, want %v", v, c.HoldTimeout, want)
+		}
+	}
+}

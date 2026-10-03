@@ -369,6 +369,89 @@ func TestChangeCommittedDuringTheTurnIsNotRecorded(t *testing.T) {
 	}
 }
 
+func TestCommittedFilesAreReleasedAndHandedOn(t *testing.T) {
+	env := newFakeEnv()
+	env.files[fileA], env.files[fileB] = "a1", "b1"
+	e := newEngine(env)
+	e.Seen("A", 1, "")
+	e.SetTask("A", "task A")
+	e.Seen("B", 2, "")
+	mustAllow(t, e.Acquire("A", fileA))
+	mustAllow(t, e.Acquire("A", fileB))
+	mustDeny(t, e.Acquire("B", fileA))
+	env.files[fileA], env.files[fileB] = "a2", "b2"
+	env.clean[fileA] = true // committed; b.go still has uncommitted changes
+
+	released, handedOn := e.ReleaseCommitted("A")
+	if len(released) != 1 || released[0] != fileA || len(handedOn) != 1 || handedOn[0] != fileA {
+		t.Fatalf("released = %v, handedOn = %v", released, handedOn)
+	}
+	if l := e.St.Locks[fileB]; l == nil || l.Owner != "A" || l.Status != state.Held {
+		t.Fatalf("uncommitted b.go should stay held: %+v", l)
+	}
+	if len(e.St.Touched[fileA]) != 0 {
+		t.Fatal("a committed file is nobody's uncommitted work")
+	}
+	mustDeny(t, e.Acquire("B", fileA), "committed its changes to it", `"task A"`, "-a1\n+a2")
+	mustAllow(t, e.Acquire("B", fileA))
+	if text := e.CommittedText([]string{"a.go"}); !strings.Contains(text, "you committed a.go") {
+		t.Fatalf("committed text = %q", text)
+	}
+}
+
+func TestUntouchedHoldExpiresMidTurn(t *testing.T) {
+	env := newFakeEnv()
+	e := newEngine(env)
+	e.Seen("A", 1, "")
+	e.Seen("B", 2, "")
+	mustAllow(t, e.Acquire("A", fileA))
+	mustDeny(t, e.Acquire("B", fileA))
+
+	env.now = env.now.Add(8 * time.Minute)
+	mustAllow(t, e.Acquire("A", fileA)) // editing again refreshes the hold
+	env.now = env.now.Add(8 * time.Minute)
+	env.activity["A"], env.activity["B"] = env.now, env.now // both sessions are busy
+	e.Reap()
+	if e.St.Locks[fileA].Owner != "A" {
+		t.Fatal("8 minutes since the last edit is within the limit")
+	}
+	env.now = env.now.Add(3 * time.Minute)
+	env.activity["A"], env.activity["B"] = env.now, env.now
+	e.Reap()
+	l := e.St.Locks[fileA]
+	if l.Owner != "B" || l.Handoff.Reason != ReasonExpired {
+		t.Fatalf("lock = %+v", l)
+	}
+	mustDeny(t, e.Acquire("B", fileA), "has not edited it for 10 minutes")
+}
+
+func TestHoldLimitCanBeTurnedOff(t *testing.T) {
+	env := newFakeEnv()
+	e := newEngine(env)
+	e.Cfg.HoldTimeout = 0
+	e.Seen("A", 1, "")
+	mustAllow(t, e.Acquire("A", fileA))
+	env.now = env.now.Add(time.Hour)
+	env.activity["A"] = env.now
+	e.Reap()
+	if l := e.St.Locks[fileA]; l == nil || l.Owner != "A" {
+		t.Fatalf("hold limit is off, lock = %+v", l)
+	}
+}
+
+func TestLockFromV01WithoutLastEditUsesSince(t *testing.T) {
+	env := newFakeEnv()
+	e := newEngine(env)
+	e.Seen("A", 1, "")
+	e.St.Locks[fileA] = &state.Lock{Path: fileA, Owner: "A", Status: state.Held, Since: env.now}
+	env.now = env.now.Add(5 * time.Minute)
+	env.activity["A"] = env.now
+	e.Reap()
+	if e.St.Locks[fileA] == nil {
+		t.Fatal("a v0.1 lock must not expire at once just because LastEdit is unset")
+	}
+}
+
 func TestForcedReleaseHandsOn(t *testing.T) {
 	env := newFakeEnv()
 	e := newEngine(env)
