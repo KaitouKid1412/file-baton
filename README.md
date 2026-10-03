@@ -120,6 +120,23 @@ To commit everything despite the guard, prefix the command with `FILE_BATON_ALLO
 If your sessions don't need to share a checkout, `claude --worktree <name>` gives each one
 its own and avoids all of this.
 
+## Privacy
+
+file-baton never sends anything anywhere: it has no network code, and the only programs it
+runs are `git` and, in its launcher, `uname` to pick the right binary. Everything it keeps
+stays on your machine, inside the repository's `.git` directory (`.git/file-baton/`), which
+git never commits or pushes:
+
+- each active session's id, process id, transcript location (to tell whether it is still
+  active) and the first 300 characters of its latest prompt, shown to other sessions as
+  "their task". A session's task is also kept with any uncommitted changes it left, until
+  they are committed;
+- a temporary copy of each file a session is editing, used to show the next session what
+  changed, deleted when the file is released;
+- handoff notes, and a log of file-baton's decisions (file names and session ids).
+
+`rm -rf .git/file-baton` removes all of it.
+
 ## Uninstall
 
 ```bash
@@ -166,3 +183,7 @@ claude --plugin-dir .   # try the checkout without installing it
 Releasing: bump `version` in `.claude-plugin/plugin.json`, run `make release`, commit
 `libexec/` and the manifest, then `claude plugin tag --push`. Installs are git clones, so the
 release binaries under `libexec/<os>-<arch>/` are committed.
+
+## License
+
+MIT; see [LICENSE](LICENSE).
