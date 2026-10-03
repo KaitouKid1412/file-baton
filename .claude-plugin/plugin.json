@@ -6,33 +6,12 @@
   "author": {
     "name": "Surya Vamsee"
   },
-  "keywords": ["sessions", "parallel", "lock", "concurrency", "git", "handoff"],
-  "userConfig": {
-    "auto_resume": {
-      "type": "boolean",
-      "title": "Auto-resume waiting sessions",
-      "description": "Wake an idle session when a file it was waiting for is handed to it.",
-      "default": true
-    },
-    "commit_guard": {
-      "type": "boolean",
-      "title": "Commit guard",
-      "description": "Block a git commit that would include another session's uncommitted changes.",
-      "default": true
-    },
-    "grant_timeout_minutes": {
-      "type": "number",
-      "title": "Handoff timeout (minutes)",
-      "description": "How long a file handed to a waiting session stays reserved for it before it passes to the next session in line.",
-      "default": 10,
-      "min": 1
-    },
-    "idle_release_minutes": {
-      "type": "number",
-      "title": "Idle release (minutes)",
-      "description": "Release a session's files when it shows no activity for this long, for example after an interrupted turn.",
-      "default": 20,
-      "min": 1
-    }
-  }
+  "keywords": [
+    "sessions",
+    "parallel",
+    "lock",
+    "concurrency",
+    "git",
+    "handoff"
+  ]
 }

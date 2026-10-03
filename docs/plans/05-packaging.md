@@ -3,19 +3,20 @@
 ## Plugin layout
 
 ```
-.claude-plugin/plugin.json        name, version, description, author, license, userConfig
+.claude-plugin/plugin.json        name, version, description, author
 .claude-plugin/marketplace.json   one entry, source "./"
 hooks/hooks.json                  exec-form hooks
 skills/status/SKILL.md
 skills/release/SKILL.md
 libexec/file-baton                POSIX sh launcher
-libexec/<os>-<arch>/file-baton    built binaries (committed on release only)
+libexec/<os>-<arch>/file-baton    release binaries, committed with each release
+libexec/dev/file-baton            development build (gitignored), preferred when present
 ```
 
 ## Launcher (`libexec/file-baton`)
 
-- Map `uname -s`/`uname -m` to `darwin|linux` × `amd64|arm64`; `exec` the matching binary with `"$@"`.
-- Missing binary: print a one-line error to stderr and exit 0 (fail open). For `hook session-start` print `{"systemMessage":"file-baton: no binary for <os>-<arch>; run make build"}` so the user sees why it is inactive.
+- Run `libexec/dev/file-baton` if present, else map `uname -s`/`uname -m` to `darwin|linux` × `amd64|arm64` and `exec` the matching binary with `"$@"`.
+- Missing binary: hooks exit 0 (fail open); `hook session-start` prints a `systemMessage` saying file-baton is inactive and to update or reinstall the plugin. (The first version said "run make build", which is useless to someone who installed the plugin.)
 
 ## hooks.json
 
@@ -26,14 +27,15 @@ for every event in the overview's hook map. Timeouts: `wait` 3600 s with `asyncR
 ## Build
 
 `Makefile`:
-- `build`: host binary into `libexec/<host-os>-<host-arch>/` (used by `--plugin-dir` development)
+- `build`: host binary into `libexec/dev/` (used by `--plugin-dir` development)
 - `dist`: all four targets, `CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(VERSION)"`
 - `test`: `go vet ./... && go test -race ./...`
 - `validate`: `claude plugin validate --strict .`
+- `release`: `test`, `validate`, `dist`, then prints the commit and tag commands
 - `e2e`: end-to-end script below
 
-`.gitignore` ignores `libexec/*-*/` during development. Releasing commits the binaries
-(see below).
+Installs are git clones, so release binaries are committed; `.gitignore` covers only
+`libexec/dev/` and `dist/`.
 
 ## Tests
 
@@ -44,7 +46,7 @@ for every event in the overview's hook map. Timeouts: `wait` 3600 s with `asyncR
 ## Release
 
 1. Bump `version` in `plugin.json`.
-2. `make test validate dist`.
+2. `make release`.
 3. Commit the binaries with the version bump; tag with `claude plugin tag --push`.
 4. Users: `claude plugin marketplace add <owner>/file-baton` then `claude plugin install file-baton@file-baton`.
 

@@ -1,7 +1,5 @@
-// Package config reads file-baton's settings from the environment.
-//
-// Plugin userConfig values arrive as CLAUDE_PLUGIN_OPTION_<KEY>; FILE_BATON_<KEY>
-// overrides them, which is handy for tests and for switching the plugin off.
+// Package config reads file-baton's settings from FILE_BATON_* environment
+// variables. Every setting has a default, so nothing needs configuring.
 package config
 
 import (
@@ -37,12 +35,7 @@ func Default() Config {
 func Load(getenv func(string) string) (Config, []string) {
 	c := Default()
 	var warnings []string
-	lookup := func(key string) string {
-		if v := getenv("FILE_BATON_" + key); v != "" {
-			return v
-		}
-		return getenv("CLAUDE_PLUGIN_OPTION_" + key)
-	}
+	lookup := func(key string) string { return getenv("FILE_BATON_" + key) }
 	boolean := func(key string, dst *bool) {
 		v := lookup(key)
 		if v == "" {

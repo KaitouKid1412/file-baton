@@ -7,12 +7,12 @@ import (
 
 func TestLoad(t *testing.T) {
 	env := map[string]string{
-		"CLAUDE_PLUGIN_OPTION_AUTO_RESUME":           "false",
-		"CLAUDE_PLUGIN_OPTION_GRANT_TIMEOUT_MINUTES": "2.5",
-		"CLAUDE_PLUGIN_OPTION_COMMIT_GUARD":          "false",
-		"FILE_BATON_COMMIT_GUARD":                    "true", // overrides the plugin option
-		"FILE_BATON_IDLE_RELEASE_MINUTES":            "-3",   // invalid: default kept
-		"FILE_BATON_MAX_DIFF_LINES":                  "50",
+		"FILE_BATON_AUTO_RESUME":           "false",
+		"FILE_BATON_GRANT_TIMEOUT_MINUTES": "2.5",
+		"FILE_BATON_COMMIT_GUARD":          "true",
+		"FILE_BATON_IDLE_RELEASE_MINUTES":  "-3", // invalid: default kept
+		"FILE_BATON_MAX_DIFF_LINES":        "50",
+		"CLAUDE_PLUGIN_OPTION_AUTO_RESUME": "true", // not read any more
 	}
 	c, warnings := Load(func(k string) string { return env[k] })
 	if c.AutoResume || !c.CommitGuard || c.GrantTimeout != 150*time.Second || c.IdleRelease != 20*time.Minute || c.MaxDiffLines != 50 {

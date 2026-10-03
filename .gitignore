@@ -1,3 +1,3 @@
-# Built binaries; committed only when cutting a release (see docs/plans/05-packaging.md).
-/libexec/*-*/
+# Development build (make build). Release binaries in libexec/<os>-<arch>/ are committed.
+/libexec/dev/
 /dist/

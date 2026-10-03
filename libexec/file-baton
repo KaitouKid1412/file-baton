@@ -1,5 +1,6 @@
 #!/bin/sh
 # file-baton launcher: runs the binary built for this platform.
+# A development build in libexec/dev/ (make build) takes precedence.
 # A missing binary never blocks Claude Code: hook calls exit 0.
 dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 os=$(uname -s | tr '[:upper:]' '[:lower:]')
@@ -8,11 +9,12 @@ case $(uname -m) in
   arm64 | aarch64) arch=arm64 ;;
   *) arch=$(uname -m) ;;
 esac
-exe="$dir/$os-$arch/file-baton"
-if [ -x "$exe" ]; then
-  exec "$exe" "$@"
-fi
-msg="file-baton: no binary for $os-$arch in $dir (build it with: make build)"
+for exe in "$dir/dev/file-baton" "$dir/$os-$arch/file-baton"; do
+  if [ -x "$exe" ]; then
+    exec "$exe" "$@"
+  fi
+done
+msg="file-baton is inactive: this install has no binary for $os-$arch. Update or reinstall the plugin: claude plugin update file-baton@file-baton"
 if [ "$1" = hook ]; then
   if [ "$2" = session-start ]; then
     printf '{"systemMessage":"%s"}\n' "$msg"

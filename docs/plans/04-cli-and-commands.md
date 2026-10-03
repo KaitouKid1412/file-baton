@@ -42,16 +42,18 @@ body runs `release $ARGUMENTS` and reports the result. Only the user triggers it
 
 ## Config (`internal/config`)
 
-Order (later wins): defaults → `CLAUDE_PLUGIN_OPTION_<KEY>` (plugin userConfig) → `FILE_BATON_<KEY>` env.
+Defaults, overridden by `FILE_BATON_<KEY>` environment variables. There is no plugin
+`userConfig`: with it, every install printed "4 userConfig options not yet set", which
+reads to a newcomer as unfinished setup.
 
-| Key | Type | Default | userConfig |
-|---|---|---|---|
-| `auto_resume` | bool | true | yes |
-| `commit_guard` | bool | true | yes |
-| `grant_timeout_minutes` | number | 10 | yes |
-| `idle_release_minutes` | number | 20 | yes |
-| `max_diff_lines` | number | 200 | no |
-| `disabled` | bool | false | no (env escape hatch) |
+| Key | Type | Default |
+|---|---|---|
+| `AUTO_RESUME` | bool | true |
+| `COMMIT_GUARD` | bool | true |
+| `GRANT_TIMEOUT_MINUTES` | number | 10 |
+| `IDLE_RELEASE_MINUTES` | number | 20 |
+| `MAX_DIFF_LINES` | number | 200 |
+| `DISABLED` | bool | false |
 
 Invalid values fall back to the default and are logged.
 

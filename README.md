@@ -1,40 +1,20 @@
 # file-baton
 
-A Claude Code plugin for running several Claude sessions in the same git checkout.
+Run several Claude Code sessions in the same git checkout without them stepping on each other.
 
-- **One editor per file.** A session that edits a file holds its baton until its turn ends. Another session that tries to edit the same file is told who has it, what they're working on, and that it is in line.
-- **Handoff with context.** When the holder finishes, the file goes to the next session in line together with the diff the holder made, the holder's task and any note it left.
-- **Auto-resume.** A waiting session that has gone idle is woken up when the file reaches it, and carries on.
-- **Commit guard.** A `git commit` that would sweep in another session's uncommitted changes is refused, with a suggestion for committing only your own files.
-- **Crash recovery.** If a session's Claude process dies, its files are released at once, and its unfinished changes go to the next session with the handoff.
+- **One editor per file.** A session that edits a file holds its baton until its turn ends. Another session that tries to edit it is told who has it and waits in line.
+- **Handoff with context.** When the holder finishes, the next session gets the file together with the holder's diff, task and notes.
+- **Auto-resume.** A waiting session that went idle wakes up by itself when the file reaches it.
+- **Commit guard.** A `git commit` that would sweep in another session's uncommitted work is refused.
+- **Crash recovery.** If a session dies, its files are released at once.
 
-## How it looks
+Nothing to configure, no daemon, no account.
 
-Session B tries to edit a file session A is changing:
+## Requirements
 
-```
-file-baton: src/api.ts is being edited by another Claude session (3f2a91c0).
-Their task: "add pagination to the list endpoint"
-You are #1 in line. Do other parts of your task first, and do not work around this
-by changing the file another way (for example with a shell command).
-When they finish you will be given the file with a summary of their changes; if you
-are idle by then you will be woken up automatically.
-```
-
-When A's turn ends, B receives:
-
-```
-file-baton: you now hold src/api.ts (you were waiting for it).
-Session 3f2a91c0 finished with it. Their task: "add pagination to the list endpoint"
-Their notes:
-  - renamed listItems() to listPage(); callers updated
-Their changes:
---- a/src/api.ts
-+++ b/src/api.ts
-@@ -10,6 +10,9 @@
-...
-Re-read the file before editing; your earlier view of it is out of date.
-```
+- Claude Code (tested with 2.1.287)
+- A git repository: file-baton stays out of the way everywhere else
+- macOS or Linux (amd64 or arm64)
 
 ## Install
 
@@ -43,11 +23,46 @@ claude plugin marketplace add <owner>/file-baton
 claude plugin install file-baton@file-baton
 ```
 
-To try a local checkout without installing it:
+Or from inside Claude Code: `/plugin install file-baton --marketplace <owner>/file-baton`.
 
-```bash
-make build
-claude --plugin-dir /path/to/file-baton
+Sessions that were already open pick it up after `/reload-plugins` or a restart.
+
+## Try it in two minutes
+
+1. Open two terminals in the same git repository and start `claude` in both.
+2. In the first, ask for a change that takes a little while, for example:
+   `Add input validation to every function in utils.py, then run the tests.`
+3. While it works, ask the second for a different change to the same file:
+   `Add a docstring to every function in utils.py.`
+4. The second session is told the file is busy and waits. When the first finishes, the second wakes up, reads what changed, and makes its edit on top.
+5. Run `/file-baton:status` in either session to see who holds what.
+
+## What the sessions see
+
+The waiting session:
+
+```
+file-baton: utils.py is being edited by another Claude session (3f2a91c0).
+Their task: "Add input validation to every function in utils.py, then run the tests."
+You are #1 in line. Do other parts of your task first, and do not work around this
+by changing the file another way (for example with a shell command).
+When they finish you will be given the file with a summary of their changes; if you
+are idle by then you will be woken up automatically.
+```
+
+When the file reaches it:
+
+```
+file-baton: you now hold utils.py (you were waiting for it).
+Session 3f2a91c0 finished with it. Their task: "Add input validation to ..."
+Their notes:
+  - every function now raises ValueError on bad input; tests updated
+Their changes:
+--- a/utils.py
++++ b/utils.py
+@@ -10,6 +10,9 @@
+...
+Re-read the file before editing; your earlier view of it is out of date.
 ```
 
 ## Commands
@@ -57,21 +72,20 @@ claude --plugin-dir /path/to/file-baton
 | `/file-baton:status` | Files being edited, who is waiting, uncommitted changes per session, live sessions |
 | `/file-baton:release <file>...` | Release files by hand (also `--mine`, `--all`); whoever waits gets them next |
 
-Claude leaves handoff notes itself when someone is waiting, through `file-baton note`.
-That command and `status` run without a permission prompt; `release` always asks.
+Claude leaves handoff notes on its own when someone is waiting, with `file-baton note`.
 
 ## Settings
 
-Set in `/config` (plugin options) or with environment variables, which take precedence.
+Defaults work for most people. To change them, set environment variables before starting `claude`:
 
-| Option | Default | Environment variable |
+| Variable | Default | Meaning |
 |---|---|---|
-| Auto-resume waiting sessions | on | `FILE_BATON_AUTO_RESUME` |
-| Commit guard | on | `FILE_BATON_COMMIT_GUARD` |
-| Handoff timeout: how long a handed-over file stays reserved while others wait | 10 min | `FILE_BATON_GRANT_TIMEOUT_MINUTES` |
-| Idle release: free a session's files after this long without activity | 20 min | `FILE_BATON_IDLE_RELEASE_MINUTES` |
-| Lines of diff in a handoff | 200 | `FILE_BATON_MAX_DIFF_LINES` |
-| Turn file-baton off | off | `FILE_BATON_DISABLED=1` |
+| `FILE_BATON_AUTO_RESUME` | `true` | Wake an idle session when a file it waits for reaches it |
+| `FILE_BATON_COMMIT_GUARD` | `true` | Refuse commits that include other sessions' changes |
+| `FILE_BATON_GRANT_TIMEOUT_MINUTES` | `10` | How long a handed-over file stays reserved while others wait |
+| `FILE_BATON_IDLE_RELEASE_MINUTES` | `20` | Release a session's files after this long without activity |
+| `FILE_BATON_MAX_DIFF_LINES` | `200` | Lines of diff included in a handoff |
+| `FILE_BATON_DISABLED` | `false` | Turn file-baton off |
 
 To commit everything despite the guard, prefix the command with `FILE_BATON_ALLOW=1`
 (Claude is told to do this only when you explicitly ask).
@@ -79,13 +93,26 @@ To commit everything despite the guard, prefix the command with `FILE_BATON_ALLO
 ## What it does not cover
 
 - Edits made through shell commands (`sed -i`, redirects, code generators). Only Claude's edit tools are locked.
-- Conflicts between different files, such as renaming a function in one file while another session calls it from another.
+- Conflicts between different files, such as renaming a function in one file while another session calls it elsewhere.
 - `git commit` typed by a person in a terminal. The guard sees only Claude's commands.
-- Sessions on different machines.
-- Windows (macOS and Linux, amd64 and arm64, are supported).
+- Sessions on different machines, and Windows.
 
-If your sessions don't need to share a checkout, `claude --worktree <name>` gives each
-one its own and avoids all of this.
+If your sessions don't need to share a checkout, `claude --worktree <name>` gives each one
+its own and avoids all of this.
+
+## Uninstall
+
+```bash
+claude plugin uninstall file-baton@file-baton
+claude plugin marketplace remove file-baton
+rm -rf .git/file-baton   # per repository: the lock state and log
+```
+
+## Troubleshooting
+
+- `/file-baton:status` shows the current state; the log of recent decisions is in `.git/file-baton/log`.
+- A file stuck with a session you already closed: `/file-baton:release <file>`.
+- On any internal error file-baton steps aside (the edit goes through) and logs the error.
 
 ## How it works
 
@@ -105,21 +132,16 @@ are identified by Claude Code's session id; liveness is the `CLAUDE_PID` process
 
 Design and plans: [`docs/plans/`](docs/plans/).
 
-## Troubleshooting
-
-- `file-baton status --log` (or `/file-baton:status`) shows recent decisions. The log is in `.git/file-baton/log`.
-- A file stuck with a session you closed: `/file-baton:release <file>`.
-- Any internal error makes file-baton step aside (the edit goes through) and logs the error.
-
 ## Development
 
 ```bash
+make build      # dev binary in libexec/dev/ (gitignored, preferred by the launcher)
 make test       # go vet + go test -race
 make validate   # claude plugin validate --strict .
-make build      # host binary into libexec/<os>-<arch>/
-make dist       # all release binaries
 make e2e        # two real Claude sessions racing for one file (costs a few cents)
+claude --plugin-dir .   # try the checkout without installing it
 ```
 
-Releasing: bump `version` in `.claude-plugin/plugin.json`, `make test validate dist`,
-commit the binaries under `libexec/`, then `claude plugin tag --push`.
+Releasing: bump `version` in `.claude-plugin/plugin.json`, run `make release`, commit
+`libexec/` and the manifest, then `claude plugin tag --push`. Installs are git clones, so the
+release binaries under `libexec/<os>-<arch>/` are committed.

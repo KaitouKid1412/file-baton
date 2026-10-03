@@ -1,15 +1,15 @@
 VERSION ?= $(shell sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' .claude-plugin/plugin.json | head -1)
 LDFLAGS := -s -w -X main.version=$(VERSION)
 TARGETS := darwin-arm64 darwin-amd64 linux-arm64 linux-amd64
-HOST := $(shell go env GOOS)-$(shell go env GOARCH)
 
-.PHONY: build dist test validate e2e clean
+.PHONY: build dist release test validate e2e clean
 
-# Host binary, used when developing with: claude --plugin-dir .
+# Development binary for this machine. The launcher prefers it over the
+# committed release binaries; it is gitignored.
 build:
-	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o libexec/$(HOST)/file-baton ./cmd/file-baton
+	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o libexec/dev/file-baton ./cmd/file-baton
 
-# Every release target.
+# Release binaries for every target, committed with each release.
 dist:
 	@for t in $(TARGETS); do \
 		os=$${t%-*}; arch=$${t#*-}; \
@@ -24,9 +24,16 @@ test:
 validate:
 	claude plugin validate --strict .
 
+# Everything a release needs; then commit libexec/ and tag.
+release: test validate dist
+	@echo
+	@echo "Release $(VERSION) built. Next:"
+	@echo "  git add -A libexec .claude-plugin && git commit -m 'Release v$(VERSION)'"
+	@echo "  claude plugin tag --push"
+
 # Two real Claude sessions racing for one file; costs a few cents.
 e2e: build
 	./scripts/e2e.sh
 
 clean:
-	rm -rf $(addprefix libexec/,$(TARGETS)) dist
+	rm -rf libexec/dev dist

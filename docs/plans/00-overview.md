@@ -114,3 +114,9 @@ Changes from the plans, found while building:
 - Skill shell injections need permission like any Bash call, so both skills declare `allowed-tools` for their exact command (`${CLAUDE_PLUGIN_ROOT}` is substituted there).
 - Handoff and notes messages say explicitly that files are released automatically. Without that, sessions in the e2e run went looking for a release or finish command.
 - Claude Code refuses bare `sleep`, so the e2e script holds the file with a small `slow-build.sh`.
+
+Changes after a new-user install test (install from a clone of the committed repo):
+
+- Release binaries are committed under `libexec/<os>-<arch>/`; development builds go to the gitignored `libexec/dev/`. Without committed binaries the plugin installed "successfully" and did nothing.
+- `userConfig` was removed; settings are `FILE_BATON_*` environment variables only.
+- The missing-binary message tells users to update or reinstall, not to run `make build`.
