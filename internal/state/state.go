@@ -37,15 +37,15 @@ type Session struct {
 
 // Lock is the baton for one file.
 type Lock struct {
-	Path       string    `json:"path"`
-	Owner      string    `json:"owner"`
-	Status     string    `json:"status"`
-	Since      time.Time `json:"since"`
-	Snapshot   string    `json:"snapshot,omitempty"`
-	Queue      []Waiter  `json:"queue,omitempty"`
-	Notes      []string  `json:"notes,omitempty"`
-	Handoff    *Handoff  `json:"handoff,omitempty"`
-	Told       []string  `json:"told,omitempty"`
+	Path     string    `json:"path"`
+	Owner    string    `json:"owner"`
+	Status   string    `json:"status"`
+	Since    time.Time `json:"since"`
+	Snapshot string    `json:"snapshot,omitempty"`
+	Queue    []Waiter  `json:"queue,omitempty"`
+	Notes    []string  `json:"notes,omitempty"`
+	Handoff  *Handoff  `json:"handoff,omitempty"`
+	Told     []string  `json:"told,omitempty"`
 }
 
 // Waiter is a session queued for a lock.
