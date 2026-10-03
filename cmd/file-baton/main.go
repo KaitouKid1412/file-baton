@@ -10,8 +10,8 @@ import (
 	"runtime"
 	"strings"
 
-	"file-baton/internal/cli"
-	"file-baton/internal/hook"
+	"github.com/KaitouKid1412/file-baton/internal/cli"
+	"github.com/KaitouKid1412/file-baton/internal/hook"
 )
 
 // version is set at build time with -ldflags "-X main.version=...".

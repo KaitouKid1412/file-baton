@@ -19,11 +19,11 @@ Nothing to configure, no daemon, no account.
 ## Install
 
 ```bash
-claude plugin marketplace add <owner>/file-baton
+claude plugin marketplace add KaitouKid1412/file-baton
 claude plugin install file-baton@file-baton
 ```
 
-Or from inside Claude Code: `/plugin install file-baton --marketplace <owner>/file-baton`.
+Or from inside Claude Code: `/plugin install file-baton --marketplace KaitouKid1412/file-baton`.
 
 Sessions that were already open pick it up after `/reload-plugins` or a restart.
 

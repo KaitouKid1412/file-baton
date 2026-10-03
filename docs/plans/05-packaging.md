@@ -48,7 +48,7 @@ Installs are git clones, so release binaries are committed; `.gitignore` covers 
 1. Bump `version` in `plugin.json`.
 2. `make release`.
 3. Commit the binaries with the version bump; tag with `claude plugin tag --push`.
-4. Users: `claude plugin marketplace add <owner>/file-baton` then `claude plugin install file-baton@file-baton`.
+4. Users: `claude plugin marketplace add KaitouKid1412/file-baton` then `claude plugin install file-baton@file-baton`.
 
 Binary size: about 3 MB per target, about 12 MB per release in git history. If that
 grows into a problem, move binaries to GitHub Release assets downloaded by the launcher.

@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"file-baton/internal/state"
+	"github.com/KaitouKid1412/file-baton/internal/state"
 )
 
 func (e *Engine) cli() string { return `"` + e.CLI + `"` }

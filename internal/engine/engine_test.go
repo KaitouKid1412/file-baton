@@ -6,8 +6,8 @@ import (
 	"testing"
 	"time"
 
-	"file-baton/internal/config"
-	"file-baton/internal/state"
+	"github.com/KaitouKid1412/file-baton/internal/config"
+	"github.com/KaitouKid1412/file-baton/internal/state"
 )
 
 type fakeEnv struct {

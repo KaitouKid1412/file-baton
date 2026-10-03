@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"runtime/debug"
 
-	"file-baton/internal/app"
-	"file-baton/internal/gitx"
+	"github.com/KaitouKid1412/file-baton/internal/app"
+	"github.com/KaitouKid1412/file-baton/internal/gitx"
 )
 
 // Input is the part of a hook's stdin file-baton reads.
@@ -142,4 +142,3 @@ type stopBlock struct {
 	Decision string `json:"decision"`
 	Reason   string `json:"reason"`
 }
-

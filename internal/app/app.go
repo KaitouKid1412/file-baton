@@ -9,11 +9,11 @@ import (
 	"strconv"
 	"time"
 
-	"file-baton/internal/config"
-	"file-baton/internal/engine"
-	"file-baton/internal/gitx"
-	"file-baton/internal/proc"
-	"file-baton/internal/state"
+	"github.com/KaitouKid1412/file-baton/internal/config"
+	"github.com/KaitouKid1412/file-baton/internal/engine"
+	"github.com/KaitouKid1412/file-baton/internal/gitx"
+	"github.com/KaitouKid1412/file-baton/internal/proc"
+	"github.com/KaitouKid1412/file-baton/internal/state"
 )
 
 // App is file-baton bound to one work tree.

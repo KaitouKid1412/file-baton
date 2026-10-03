@@ -13,10 +13,10 @@ import (
 	"strings"
 	"time"
 
-	"file-baton/internal/app"
-	"file-baton/internal/engine"
-	"file-baton/internal/gitx"
-	"file-baton/internal/state"
+	"github.com/KaitouKid1412/file-baton/internal/app"
+	"github.com/KaitouKid1412/file-baton/internal/engine"
+	"github.com/KaitouKid1412/file-baton/internal/gitx"
+	"github.com/KaitouKid1412/file-baton/internal/state"
 )
 
 // Env is what a command runs with.
