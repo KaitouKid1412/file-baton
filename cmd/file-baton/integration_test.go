@@ -394,6 +394,32 @@ func TestCommittedChangeIsNotBlamedLater(t *testing.T) {
 	expect(t, b.bash(`git commit -am "B's change"`), "")
 }
 
+// A change committed outside the hooks (a terminal, a ! command) is not
+// blamed on its session, even though the file was never clean between that
+// commit and the next session's edit.
+func TestChangeCommittedOutsideTheHooksIsNotBlamed(t *testing.T) {
+	r := newRepo(t)
+	a := r.session("aaaaaaaa", os.Getpid())
+	b := r.session("bbbbbbbb", os.Getpid())
+	expect(t, a.edit("a.go"), "")
+	r.write("a.go", "package a\n\n// A.\nfunc A() {}\n")
+	expect(t, a.stop(), "")
+
+	// Commit timestamps have one-second resolution: date the commit after
+	// A's record so the test does not depend on the clock ticking over.
+	later := time.Now().Add(2 * time.Second).Format(time.RFC3339)
+	cmd := exec.Command("git", "-C", r.dir, "commit", "-q", "-am", "A's change")
+	cmd.Env = append(os.Environ(), "GIT_COMMITTER_DATE="+later)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("git commit: %v\n%s", err, out)
+	}
+	r.write("a.go", "package a\n\n// A does nothing.\nfunc A() {}\n")
+
+	expect(t, b.edit("a.go"), "")
+	r.write("a.go", "package a\n\n// A does nothing at all.\nfunc A() {}\n")
+	expect(t, b.bash(`git commit -am "B's change"`), "")
+}
+
 func TestOwnCLIIsAutoApproved(t *testing.T) {
 	r := newRepo(t)
 	a := r.session("aaaaaaaa", os.Getpid())

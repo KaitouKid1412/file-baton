@@ -17,6 +17,7 @@ type fakeEnv struct {
 	files    map[string]string // current contents; absent = no file
 	snaps    map[string]string
 	clean    map[string]bool
+	commits  map[string]time.Time // last commit per file; absent = never
 	n        int
 }
 
@@ -28,6 +29,7 @@ func newFakeEnv() *fakeEnv {
 		files:    map[string]string{},
 		snaps:    map[string]string{},
 		clean:    map[string]bool{},
+		commits:  map[string]time.Time{},
 	}
 }
 
@@ -58,7 +60,8 @@ func (f *fakeEnv) Diff(l *state.Lock) (string, bool) {
 	}
 	return fmt.Sprintf("-%s\n+%s", before, after), true
 }
-func (f *fakeEnv) IsClean(path string) bool { return f.clean[path] }
+func (f *fakeEnv) IsClean(path string) bool         { return f.clean[path] }
+func (f *fakeEnv) LastCommit(path string) time.Time { return f.commits[path] }
 
 func newEngine(env *fakeEnv) *Engine {
 	return &Engine{
@@ -353,6 +356,56 @@ func TestForeignChangesAndPruning(t *testing.T) {
 	e.PruneTouched()
 	if len(e.ForeignChanges("B", all)) != 0 {
 		t.Fatal("clean files should be pruned")
+	}
+}
+
+// A change committed where the hooks cannot see it (a terminal, another
+// tool) is forgotten even when the file was edited again before any prune.
+func TestChangeCommittedOutsideTheHooksIsPruned(t *testing.T) {
+	env := newFakeEnv()
+	env.files[fileA] = "v1"
+	e := newEngine(env)
+	e.Seen("A", 1, "")
+	e.Seen("B", 2, "")
+	mustAllow(t, e.Acquire("A", fileA))
+	env.files[fileA] = "v2"
+	e.EndSession("A")
+
+	env.now = env.now.Add(time.Minute)
+	env.commits[fileA] = env.now // A's change committed outside the hooks
+	env.now = env.now.Add(time.Minute)
+	mustAllow(t, e.Acquire("B", fileA))
+	env.files[fileA] = "v3" // dirty again before anything pruned
+
+	all := func(string) bool { return true }
+	e.PruneTouched()
+	if got := e.ForeignChanges("B", all); len(got) != 0 {
+		t.Fatalf("committed change still blamed: %+v", got)
+	}
+	if len(e.St.Touched[fileA]) != 0 {
+		t.Fatal("record older than the last commit should be pruned")
+	}
+}
+
+// Records newer than the file's last commit are still uncommitted work.
+func TestUncommittedChangeSurvivesPrune(t *testing.T) {
+	env := newFakeEnv()
+	env.files[fileA] = "v1"
+	env.commits[fileA] = env.now.Add(-time.Hour)
+	e := newEngine(env)
+	e.Seen("A", 1, "")
+	e.Seen("B", 2, "")
+	mustAllow(t, e.Acquire("A", fileA))
+	env.files[fileA] = "v2"
+	e.EndSession("A")
+	env.now = env.now.Add(time.Minute)
+	mustAllow(t, e.Acquire("B", fileA))
+	env.files[fileA] = "v3"
+
+	all := func(string) bool { return true }
+	e.PruneTouched()
+	if got := e.ForeignChanges("B", all); len(got) != 1 || got[0].Session != "A" {
+		t.Fatalf("foreign = %+v", got)
 	}
 }
 

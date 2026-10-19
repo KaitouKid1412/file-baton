@@ -46,6 +46,8 @@ type Env interface {
 	Diff(l *state.Lock) (diff string, changed bool)
 	// IsClean reports whether git sees no uncommitted change in the file.
 	IsClean(path string) bool
+	// LastCommit is when the file was last committed (zero if never).
+	LastCommit(path string) time.Time
 }
 
 // Engine applies the rules to one loaded state.
@@ -296,11 +298,21 @@ func (e *Engine) HeldBy(sid string, waitedOnly bool) []string {
 	return paths
 }
 
-// PruneTouched forgets uncommitted-change records for files git sees as clean.
+// PruneTouched forgets uncommitted-change records for files git sees as clean,
+// and records older than the file's last commit: committing a path takes the
+// whole file, so that commit already holds the recorded change.
 func (e *Engine) PruneTouched() {
-	for path := range e.St.Touched {
+	for path, touches := range e.St.Touched {
 		if e.Env.IsClean(path) {
 			delete(e.St.Touched, path)
+			continue
+		}
+		committed := e.Env.LastCommit(path)
+		touches = slices.DeleteFunc(touches, func(t state.Touch) bool { return t.At.Before(committed) })
+		if len(touches) == 0 {
+			delete(e.St.Touched, path)
+		} else {
+			e.St.Touched[path] = touches
 		}
 	}
 }

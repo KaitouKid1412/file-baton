@@ -8,7 +8,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 )
 
 // ErrNoRepo means the directory is not inside a git work tree.
@@ -156,19 +158,46 @@ func isBinary(data []byte) bool {
 // IsClean reports whether git sees no uncommitted change (staged, unstaged or
 // untracked) in the file. Any error counts as not clean.
 func IsClean(path string) bool {
-	dir := filepath.Dir(path)
-	for {
-		if st, err := os.Stat(dir); err == nil && st.IsDir() {
-			break
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return false
-		}
-		dir = parent
+	dir, ok := existingDir(path)
+	if !ok {
+		return false
 	}
 	out, err := git(dir, "status", "--porcelain", "--untracked-files=all", "--", path)
 	return err == nil && strings.TrimSpace(out) == ""
+}
+
+// LastCommit returns the committer time of the latest commit on HEAD that
+// changed the file, or the zero time when there is none or git fails.
+func LastCommit(path string) time.Time {
+	dir, ok := existingDir(path)
+	if !ok {
+		return time.Time{}
+	}
+	out, err := git(dir, "log", "-1", "--format=%ct", "--", path)
+	if err != nil {
+		return time.Time{}
+	}
+	secs, err := strconv.ParseInt(strings.TrimSpace(out), 10, 64)
+	if err != nil {
+		return time.Time{}
+	}
+	return time.Unix(secs, 0)
+}
+
+// existingDir returns the nearest existing directory containing path, for
+// running git on files that may have been deleted.
+func existingDir(path string) (string, bool) {
+	dir := filepath.Dir(path)
+	for {
+		if st, err := os.Stat(dir); err == nil && st.IsDir() {
+			return dir, true
+		}
+		parent := filepath.Dir(dir)
+		if parent == dir {
+			return "", false
+		}
+		dir = parent
+	}
 }
 
 // Staged lists files with staged changes, as absolute paths.

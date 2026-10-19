@@ -141,3 +141,5 @@ func (e *env) Diff(l *state.Lock) (string, bool) {
 }
 
 func (e *env) IsClean(path string) bool { return gitx.IsClean(path) }
+
+func (e *env) LastCommit(path string) time.Time { return gitx.LastCommit(path) }
